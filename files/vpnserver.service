@@ -1,0 +1,16 @@
+[Unit]
+Description=Softether VPN Server Service
+After=network.target
+ConditionPathExists=/opt/softether/
+
+[Service]
+Type=forking
+User=root
+ExecStart=/opt/softether/vpnserver start
+ExecStop=/opt/softether/vpnserver stop
+Restart=on-abort
+WorkingDirectory=/opt/softether/
+ExecStartPre=/sbin/ip link set dev eth0 promisc on
+
+[Install]
+WantedBy=multi-user.target

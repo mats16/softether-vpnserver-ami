@@ -1,0 +1,78 @@
+{
+    "variables": {
+      "aws_region": "us-east-1",
+      "creator": "{{env `USER`}}",
+      "instance_type": "t2.micro",
+      "source_ami_id": "",
+      "encrypted": "false",
+      "kms_key_id": "",
+      "softether_version": "v4.25-9656-rtm",
+      "softether_source":"https://github.com/SoftEtherVPN/SoftEtherVPN_Stable/releases/download/v4.25-9656-rtm/softether-vpnserver-v4.25-9656-rtm-2018.01.15-linux-x64-64bit.tar.gz"
+    },
+  
+    "builders": [
+      {
+        "type": "amazon-ebs",
+        "region": "{{user `aws_region`}}",
+        "source_ami": "{{user `source_ami_id`}}",
+        "source_ami_filter": {
+          "filters": {
+            "architecture": "x86_64",
+            "name": "amzn2-ami-minimal-hvm-*",
+            "root-device-type": "ebs",
+            "state": "available",
+            "virtualization-type": "hvm"
+          },
+          "owners": [ "137112412989" ],
+          "most_recent": true
+        },
+        "instance_type": "{{user `instance_type`}}",
+        "launch_block_device_mappings": [
+          {
+            "device_name": "/dev/xvda",
+            "volume_type": "gp2",
+            "volume_size": 20,
+            "delete_on_termination": true
+          }
+        ],
+        "ssh_username": "ec2-user",
+        "ssh_pty": true,
+        "encrypt_boot": "{{user `encrypted`}}",
+        "kms_key_id": "{{user `kms_key_id`}}",
+        "run_tags": {
+            "creator": "{{user `creator`}}"
+        },
+        "tags": {
+            "created": "{{timestamp}}"
+        },
+        "ami_name": "softether-vpnserver-{{user `softether_version`}}-{{timestamp}}",
+        "ami_description": "Softether VPN Server {{user `softether_version`}} with AmazonLinux2 image"
+      }
+    ],
+  
+    "provisioners": [
+      {
+        "type": "file",
+        "source": "./files/vpnserver.service",
+        "destination": "/tmp/vpnserver.service"
+      },
+      {
+        "type": "shell",
+        "inline": [
+          "sudo yum install -y gcc make",
+          "sudo mkdir -m 755 -p /opt/softether",
+          "curl -L {{user `softether_source`}} | sudo tar zxvf - -C /opt/softether --strip=1",
+          "cd /opt/softether && sudo make i_read_and_agree_the_license_agreement",
+          "sudo mv /tmp/vpnserver.service /etc/systemd/system/vpnserver.service",
+          "sudo systemctl enable vpnserver"
+        ]
+      }
+    ],
+    "post-processors": [
+      {
+        "type": "manifest",
+        "output": "manifest.json",
+        "strip_path": true
+      }
+    ]
+}
